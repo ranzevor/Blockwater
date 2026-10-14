@@ -188,6 +188,29 @@ void epoch_exhaustion() {
     REQUIRE(f.guest->peer_reason() == RejectReason::Protocol);
 }
 
+void concurrent_heartbeats() {
+    auto memory = std::make_unique<SharedBridge>();
+    initialize(*memory);
+    Endpoint guest(*memory, Role::Guest);
+    guest.announce(200);
+    HostSession host(*memory, 100);
+    std::atomic<bool> running{true};
+    std::atomic<bool> began{false};
+    std::thread writer([&] {
+        guest.heartbeat();
+        began.store(true, std::memory_order_release);
+        while (running.load(std::memory_order_relaxed)) guest.heartbeat();
+    });
+    while (!began.load(std::memory_order_acquire)) std::this_thread::yield();
+    std::size_t connected = 0;
+    for (unsigned i = 0; i < 100'000; ++i)
+        connected += host.tick(HostContext::StoryMode) == HostPhase::Connected;
+    running.store(false, std::memory_order_relaxed);
+    writer.join();
+    REQUIRE(connected > 0);
+    REQUIRE(host.epoch() == 100);
+}
+
 void frame_invalidation() {
     auto memory = std::make_unique<SharedBridge>();
     initialize(*memory);
@@ -205,8 +228,8 @@ void frame_invalidation() {
 int main() {
     try {
         states(); multiplayer(); rejection(); backpressure(); stale_budget();
-        reconnect(); thread_guard(); epoch_exhaustion(); frame_invalidation();
-        std::cout << "9 host session scenarios passed\n";
+        reconnect(); thread_guard(); epoch_exhaustion(); frame_invalidation(); concurrent_heartbeats();
+        std::cout << "10 host session scenarios passed\n";
         return 0;
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

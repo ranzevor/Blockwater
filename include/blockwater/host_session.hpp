@@ -16,11 +16,13 @@ public:
     ~HostSession();
     HostSession(const HostSession&) = delete;
     HostSession& operator=(const HostSession&) = delete;
-    HostPhase tick(HostContext context, std::uint64_t timestamp = now_us());
+    HostPhase tick(HostContext context);
+    HostPhase tick(HostContext context, std::uint64_t timestamp);
     void stop() noexcept;
     HostPhase phase() const noexcept { return phase_; }
     std::uint64_t epoch() const noexcept { return epoch_; }
 private:
+    HostPhase tick_impl(HostContext context, std::optional<std::uint64_t> timestamp);
     void invalidate() noexcept;
     void suspend() noexcept;
     bool start_generation();

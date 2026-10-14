@@ -46,7 +46,7 @@ Transport readiness is not gameplay readiness. The guest must also require a val
 
 A session drains at most 32 raw incoming entries per tick, including stale entries. It discards invalid packets, mismatched sender/recipient epochs and response-only event kinds. Current-epoch placement, removal, explosion and damage requests receive `Rejected`, preserving request ID, kind and block coordinates. Duplicate unsupported requests remain harmless and may receive the same rejection again.
 
-If the outgoing queue is full, one pending rejection is retained and further incoming consumption stops. A generation transition discards that pending response; old events cannot become actions in the new session. Neither side resets shared queue cursors. The ABI layout and version remain unchanged.
+If the outgoing queue is full, one pending rejection is retained and further incoming consumption stops. A generation transition discards that pending response; old events cannot become actions in the new session. Neither side resets shared queue cursors. Heartbeat validation reads the peer timestamp before sampling the local clock, so a concurrent update is not misclassified as a future heartbeat. The ABI layout and version remain unchanged.
 
 ## Native interface register
 
@@ -70,6 +70,6 @@ The six ScriptHook function declarations are adapted from its [published integra
 
 ## Automated evidence and remaining acceptance
 
-`blockwater_host_session` tests the portable lifecycle, stale-event budget, full reverse queue, thread ownership, epoch exhaustion and world-frame invalidation. On Windows the loader tests load the actual compiled `.asi` against an isolated test runtime. Its native allowlist checks call signatures and script-fiber ownership; unknown calls, off-thread calls and nonzero frame waits fail the tests. Scenarios cover independent network flags, partial native failure, pause, unavailable/dead/uncontrolled players, disconnect, guest restart, retained-mapping reload, corrupt mapping, duplicate plugin and unload before first script entry. Separate tests cover a missing runtime DLL and installation contents.
+`blockwater_host_session` tests the portable lifecycle, stale-event budget, full reverse queue, thread ownership, epoch exhaustion, world-frame invalidation and 100,000 concurrent-heartbeat checks without a false epoch change. On Windows the loader tests load the actual compiled `.asi` against an isolated test runtime. Its native allowlist checks call signatures and script-fiber ownership; unknown calls, off-thread calls and nonzero frame waits fail the tests. Scenarios cover independent network flags, partial native failure, pause, unavailable/dead/uncontrolled players, disconnect, guest restart, retained-mapping reload, corrupt mapping, duplicate plugin and unload before first script entry. Separate tests cover a missing runtime DLL and installation contents.
 
 Per-commit execution evidence is in [CI](https://github.com/ranzevor/Blockwater/actions/workflows/ci.yml). Loading against the genuine ScriptHook runtime, real game-context behavior and reload inside Story Mode still require the exact-version [game acceptance](milestones.md#required-game-validation). B1 also still requires camera/terrain acquisition and real collision creation/removal.

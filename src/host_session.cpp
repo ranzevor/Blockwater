@@ -50,7 +50,15 @@ bool HostSession::start_generation() {
     return true;
 }
 
+HostPhase HostSession::tick(HostContext context) {
+    return tick_impl(context, std::nullopt);
+}
+
 HostPhase HostSession::tick(HostContext context, std::uint64_t timestamp) {
+    return tick_impl(context, timestamp);
+}
+
+HostPhase HostSession::tick_impl(HostContext context, std::optional<std::uint64_t> timestamp) {
     if (std::this_thread::get_id() != thread_)
         throw std::logic_error("host session requires its script thread");
     if (phase_ == HostPhase::Stopped || phase_ == HostPhase::Refused) return phase_;
@@ -68,7 +76,7 @@ HostPhase HostSession::tick(HostContext context, std::uint64_t timestamp) {
     }
     endpoint_.heartbeat();
     const auto remote_epoch = endpoint_.peer_epoch();
-    const bool alive = endpoint_.peer_ready(timestamp);
+    const bool alive = timestamp ? endpoint_.peer_ready(*timestamp) : endpoint_.peer_ready();
     if (phase_ == HostPhase::Connected && (!alive || remote_epoch != guest_epoch_)) {
         suspend();
         start_generation();
@@ -77,7 +85,7 @@ HostPhase HostSession::tick(HostContext context, std::uint64_t timestamp) {
     if (!alive) return phase_;
     guest_epoch_ = remote_epoch;
     phase_ = HostPhase::Connected;
-    reject_commands(timestamp);
+    reject_commands(timestamp.value_or(now_us()));
     return phase_;
 }
 

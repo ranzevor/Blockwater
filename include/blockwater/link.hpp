@@ -50,25 +50,8 @@ public:
         observed_heartbeat_ = 0;
         peer_seen_alive_ = false;
     }
-    bool peer_ready(std::uint64_t now = now_us()) {
-        const auto& p = peer();
-        if (load(p.state) != static_cast<std::uint64_t>(PeerState::Ready)) { peer_seen_alive_ = false; return false; }
-        const auto epoch = load(p.epoch);
-        const auto stamp = load(p.heartbeat_us);
-        if (epoch == 0 || stamp == 0 || stamp > now || now - stamp > kHeartbeatTimeoutUs) { peer_seen_alive_ = false; return false; }
-        if (epoch != observed_epoch_) {
-            observed_epoch_ = epoch;
-            observed_heartbeat_ = stamp;
-            peer_seen_alive_ = false;
-            return false;
-        }
-        if (stamp != observed_heartbeat_) {
-            observed_heartbeat_ = stamp;
-            peer_seen_alive_ = true;
-            return true;
-        }
-        return peer_seen_alive_;
-    }
+    bool peer_ready() { return peer_ready_impl(0, true); }
+    bool peer_ready(std::uint64_t now) { return peer_ready_impl(now, false); }
     std::uint64_t peer_epoch() const { return load(peer().epoch); }
     PeerState peer_state() const { return static_cast<PeerState>(load(peer().state)); }
     RejectReason peer_reason() const { return static_cast<RejectReason>(load(peer().reason)); }
@@ -111,6 +94,27 @@ public:
         return false;
     }
 private:
+    bool peer_ready_impl(std::uint64_t now, bool sample_clock) {
+        const auto& p = peer();
+        if (load(p.state) != static_cast<std::uint64_t>(PeerState::Ready)) { peer_seen_alive_ = false; return false; }
+        const auto epoch = load(p.epoch);
+        const auto stamp = load(p.heartbeat_us);
+        // Sample after the peer: a concurrent heartbeat is not a future timestamp.
+        if (sample_clock) now = now_us();
+        if (epoch == 0 || stamp == 0 || stamp > now || now - stamp > kHeartbeatTimeoutUs) { peer_seen_alive_ = false; return false; }
+        if (epoch != observed_epoch_) {
+            observed_epoch_ = epoch;
+            observed_heartbeat_ = stamp;
+            peer_seen_alive_ = false;
+            return false;
+        }
+        if (stamp != observed_heartbeat_) {
+            observed_heartbeat_ = stamp;
+            peer_seen_alive_ = true;
+            return true;
+        }
+        return peer_seen_alive_;
+    }
     static std::uint64_t load(const std::uint64_t& val) {
         return std::atomic_ref<std::uint64_t>(const_cast<std::uint64_t&>(val)).load(std::memory_order_seq_cst);
     }
