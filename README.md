@@ -8,7 +8,7 @@ Blockwater is an open-source passthrough project that aims to bring Minecraft's 
 
 The intended experience is to build a wall that stops an RDR2 character or wagon, set off TNT that affects the surrounding world, and let Minecraft creatures interact with RDR2 NPCs.
 
-**Current stage: bridge-core development.** You can build the C++ library, run its simulated host–guest example and test the protocol today. The ScriptHookRDR2 plugin, Fabric client and GPU compositor are not implemented; there is no installable or playable game release yet.
+**Current stage: RDR2 adapter development.** The bridge core and the first ScriptHookRDR2 lifecycle component are implemented. Windows x64/MSVC builds `Blockwater.asi` with context checks and session handling. Real camera/terrain acquisition, gameplay effects, the Fabric client and GPU compositor remain; there is no playable game release yet.
 
 [Current capabilities](#current-capabilities) · [How it works](#how-it-works) · [Build and run](#build-and-run) · [Compatibility](#compatibility) · [Roadmap](#roadmap) · [Contribute](#contribute)
 
@@ -20,6 +20,7 @@ The intended experience is to build a wall that stops an RDR2 character or wagon
 | Peer lifecycle | Heartbeats, session epochs, stale-event rejection, duplicate suppression and multiplayer-context refusal in the host contract |
 | World mapping | Position and scale conversion between RDR2's metre/Z-up coordinates and Minecraft's block/Y-up coordinates; incremental terrain samples and nearby-entity snapshots |
 | Host adapter | Simulated block-proxy creation/removal, explosion and entity-damage callbacks, input bounds and owned-object cleanup on guest restart |
+| RDR2 native lifecycle | ScriptHook registration, read-only game-context checks, pause/disconnect/reload handling and explicit rejection of unimplemented gameplay requests; [native-host guide](docs/rdr2-host.md) |
 | Image composition | A CPU reference implementation for depth-tested world layers and HUD blending; it accepts prepared images and depths, not live game frames |
 | Localization | Startup-loaded English and Simplified Chinese catalogs with English fallback for missing translated keys |
 | Developer tests | Protocol, child-process IPC, host simulation, CPU compositing and localization suites, plus the standalone fake-pair example |
@@ -98,11 +99,11 @@ Host block proxies=1
 
 The example exits with code `0` on success. Its output comes from simulated callbacks; it does not open a game window or modify RDR2. A separate child-process shared-memory scenario is exercised by [`tests/test_ipc.cpp`](tests/test_ipc.cpp).
 
-The build produces `blockwater_core` (a static library), `blockwater_tests` and `blockwater_fakes`. There is no game installer, `.asi` or Fabric `.jar` in these outputs.
+The portable build produces `blockwater_core` (a static library), `blockwater_tests`, `blockwater_session_tests` and `blockwater_fakes`. Windows x64/MSVC also builds `build/rdr2/plugin/Release/Blockwater.asi` by default. Set `-DBLOCKWATER_BUILD_RDR2=OFF` for core-only development. The [native-host guide](docs/rdr2-host.md) covers loader tests and isolated staging; no Fabric `.jar` or playable installer is produced.
 
 ### Tests and troubleshooting
 
-CTest registers `blockwater_tests` and `blockwater_fake_pair`. The first covers frame consistency, invalid payloads, queue saturation, peer restarts, duplicate events, multiplayer refusal, coordinate transforms, host callbacks, depth occlusion and locale lookup. The Python validator checks UTF-8 catalogs, message-key/placeholder parity and local Markdown file links.
+CTest registers `blockwater_tests`, `blockwater_fake_pair` and `blockwater_host_session`; Windows native builds additionally register the `rdr2_` loader and staging tests. The first covers frame consistency, invalid payloads, queue saturation, peer restarts, duplicate events, multiplayer refusal, coordinate transforms, host callbacks, depth occlusion and locale lookup. The Python validator checks UTF-8 catalogs, message-key/placeholder parity and local Markdown file links.
 
 | Symptom | Action |
 | --- | --- |
@@ -125,7 +126,7 @@ Only RDR2 **Story Mode** is in scope; Red Dead Online is not supported. Game int
 
 | Stage | Deliverable |
 | --- | --- |
-| B0 — Bridge core | Current development stage: native protocol, host contract, simulation, CPU composition reference and localization; platform validation is tracked separately |
+| B0 — Bridge core | Implemented: native protocol, host contract, simulation, CPU composition reference and localization; platform validation is tracked separately |
 | B1 — RDR2 adapter | A ScriptHookRDR2 plugin with camera/terrain streaming, real block collision objects, Story Mode gating and safe unload |
 | B2 — Minecraft guest | A Fabric client with terrain consumption, block/explosion events, rendered-layer export and reconnect handling |
 | B3 — Rendering | DX12/ReShade integration with real host depth, camera calibration, depth-aware compositing and reprojection |
@@ -140,6 +141,7 @@ Acceptance conditions and dependencies live in [integration milestones](docs/mil
 | --- | --- |
 | [`include/blockwater/`](include/blockwater/) | Public core headers; `wire.hpp` defines the shared-memory ABI, `link.hpp` peer lifecycle and `coordinates.hpp` world transforms |
 | [`src/`](src/) | Mapping implementation, host adapter, CPU compositor and localization catalog |
+| [`rdr2/`](rdr2/) | Windows native plugin, ScriptHook import contract and isolated loader tests |
 | [`examples/`](examples/) | Runnable fake host–guest integration |
 | [`tests/`](tests/) | Native regression suites, including child-process IPC |
 | [`locales/`](locales/) | English and Simplified Chinese message catalogs |
@@ -157,6 +159,7 @@ The README is available in English and Simplified Chinese. Runtime messages are 
 
 | Task | Read |
 | --- | --- |
+| Build or test the native plugin | [RDR2 native host](docs/rdr2-host.md) |
 | Understand the protocol and rendering design | [Architecture](docs/architecture.md) |
 | Check platform evidence or integration progress | [Compatibility](docs/compatibility.md), [milestones](docs/milestones.md), [baseline verification](docs/verification-2026-10-14.md) |
 | Submit code or translations | [Contributing](CONTRIBUTING.md), [localization](docs/localization.md) |

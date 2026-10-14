@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: ${{ matrix.platform }} bridge core
+    name: ${{ matrix.platform }} native checks
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false

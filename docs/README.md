@@ -12,3 +12,8 @@
 | Verification reviewer | [Bridge core verification](verification-2026-10-14.md) |
 
 The documentation distinguishes bridge-core tests from game-integrated behavior. Accepted game compatibility requires the live evidence described in [milestones](milestones.md).
+
+## Native host
+
+- [RDR2 native host: build, lifecycle, native register and tests](rdr2-host.md)
+- [RDR2 原生宿主：构建、生命周期与测试](zh-CN/rdr2-host.md)

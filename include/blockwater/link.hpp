@@ -45,6 +45,11 @@ public:
         if (!refused_) store(own().state, static_cast<std::uint64_t>(PeerState::Closed));
     }
     bool refused() const { return refused_; }
+    void forget_peer() noexcept {
+        observed_epoch_ = 0;
+        observed_heartbeat_ = 0;
+        peer_seen_alive_ = false;
+    }
     bool peer_ready(std::uint64_t now = now_us()) {
         const auto& p = peer();
         if (load(p.state) != static_cast<std::uint64_t>(PeerState::Ready)) { peer_seen_alive_ = false; return false; }
