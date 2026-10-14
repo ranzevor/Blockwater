@@ -1,0 +1,8 @@
+# 桥接运行状态和错误消息。
+bridge.connected = 已连接 Minecraft
+bridge.disconnected = Minecraft 连接已断开
+bridge.waiting = 正在等待 Minecraft
+bridge.protocol_mismatch = 桥接协议版本不兼容
+bridge.multiplayer_refused = 仅支持《荒野大镖客 2》故事模式
+bridge.block_limit = 已达到方块数量上限
+bridge.event_rejected = 操作已被拒绝

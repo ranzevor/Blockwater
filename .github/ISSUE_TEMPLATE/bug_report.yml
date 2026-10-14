@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible issue in Blockwater
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include the commands or game actions that reproduce the issue.
+      placeholder: Starting state, action and result
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Blockwater version or commit
+      placeholder: Commit SHA or source version
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, compiler, graphics API, Minecraft/Fabric and RDR2 versions as relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized diagnostics
+      description: Do not post credentials, personal paths, game assets or security exploit details.
+    validations:
+      required: false

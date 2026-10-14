@@ -1,0 +1,24 @@
+name: Feature proposal
+description: Propose a new capability or an improvement
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: User goal and scenario
+      description: Describe the concrete gameplay or maintenance task.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Required behavior
+      description: What should a user be able to do? How can the result be verified?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Compatibility or integration effects
+      description: Mention the affected runtime, protocol, renderer, dependencies or assets.
+    validations:
+      required: false

@@ -1,0 +1,8 @@
+# Localized strings for runtime status and bridge errors.
+bridge.connected = Minecraft connected
+bridge.disconnected = Minecraft connection lost
+bridge.waiting = Waiting for Minecraft
+bridge.protocol_mismatch = Incompatible bridge protocol
+bridge.multiplayer_refused = Only Red Dead Redemption 2 Story Mode is supported
+bridge.block_limit = Block limit reached
+bridge.event_rejected = Action rejected
