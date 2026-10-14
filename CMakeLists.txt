@@ -9,6 +9,7 @@ add_library(blockwater_core STATIC
     src/mapping.cpp
     src/host_adapter.cpp
     src/host_session.cpp
+    src/world_stream.cpp
     src/compositor.cpp
     src/i18n.cpp)
 target_include_directories(blockwater_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -51,6 +52,16 @@ else()
 endif()
 add_test(NAME blockwater_host_session COMMAND blockwater_session_tests)
 set_tests_properties(blockwater_host_session PROPERTIES TIMEOUT 20)
+
+add_executable(blockwater_world_tests tests/test_world_stream.cpp)
+target_link_libraries(blockwater_world_tests PRIVATE blockwater_core)
+if(MSVC)
+    target_compile_options(blockwater_world_tests PRIVATE /W4 /WX /utf-8)
+else()
+    target_compile_options(blockwater_world_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME blockwater_world_stream COMMAND blockwater_world_tests)
+set_tests_properties(blockwater_world_stream PROPERTIES TIMEOUT 20)
 
 option(BLOCKWATER_BUILD_RDR2 "Build the Windows x64 ScriptHookRDR2 plugin" ${WIN32})
 if(BLOCKWATER_BUILD_RDR2)

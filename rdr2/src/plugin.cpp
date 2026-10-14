@@ -1,5 +1,6 @@
 #include "scripthook.hpp"
 #include "native_gate.hpp"
+#include "native_world.hpp"
 #include "blockwater/mapping.hpp"
 #include <limits>
 #include <optional>
@@ -43,13 +44,23 @@ public:
         session_.emplace(shared, epoch);
     }
     void tick() {
-        if (session_->phase() != blockwater::HostPhase::Refused)
-            session_->tick(blockwater::rdr2::read_context());
+        if (session_->phase() == blockwater::HostPhase::Refused) return;
+        const auto phase = session_->tick(blockwater::rdr2::read_context());
+        if (phase != blockwater::HostPhase::Connected) {
+            world_.reset();
+            return;
+        }
+        world_.collect(source_, session_->epoch(), frame_);
+        // The script thread is the sole publisher; a failed collection writes an invalid snapshot.
+        mapping_->bridge().host_frame.publish(frame_);
     }
 private:
     HostLease lease_;
     std::optional<blockwater::Mapping> mapping_;
     std::optional<blockwater::HostSession> session_;
+    blockwater::rdr2::NativeWorld source_;
+    blockwater::WorldStream world_;
+    blockwater::HostFrame frame_{};
 };
 
 Runtime* runtime = nullptr;
