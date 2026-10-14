@@ -142,9 +142,12 @@ struct alignas(64) AtomicSnapshot {
 
 // Single producer, single consumer. The producer cannot overwrite an unread
 // event, and the consumer only acknowledges a fully copied event.
+// ABI v1 keeps the counters on distinct 64-byte cache lines.
 struct alignas(64) EventRing {
     alignas(64) std::uint64_t produced = 0;
+    std::array<std::byte, 56> reserved_produced{};
     alignas(64) std::uint64_t consumed = 0;
+    std::array<std::byte, 56> reserved_consumed{};
     using Words = std::array<std::uint64_t, (sizeof(Event) + 7) / 8>;
     alignas(64) std::array<Words, kEventCapacity> entries{};
 
@@ -183,10 +186,28 @@ enum class RejectReason : std::uint64_t { None = 0, Multiplayer = 1, Protocol = 
 
 struct alignas(64) PeerControl {
     alignas(64) std::uint64_t epoch = 0;
+    std::array<std::byte, 56> reserved_epoch{};
     alignas(64) std::uint64_t heartbeat_us = 0;
+    std::array<std::byte, 56> reserved_heartbeat{};
     alignas(64) std::uint64_t state = 0;
+    std::array<std::byte, 56> reserved_state{};
     alignas(64) std::uint64_t reason = 0;
+    std::array<std::byte, 56> reserved_reason{};
 };
+
+static_assert(std::is_standard_layout_v<EventRing>);
+static_assert(alignof(EventRing) == 64);
+static_assert(offsetof(EventRing, produced) == 0);
+static_assert(offsetof(EventRing, consumed) == 64);
+static_assert(offsetof(EventRing, entries) == 128);
+static_assert(sizeof(EventRing) == 128 + sizeof(EventRing::Words) * kEventCapacity);
+static_assert(std::is_standard_layout_v<PeerControl>);
+static_assert(alignof(PeerControl) == 64);
+static_assert(offsetof(PeerControl, epoch) == 0);
+static_assert(offsetof(PeerControl, heartbeat_us) == 64);
+static_assert(offsetof(PeerControl, state) == 128);
+static_assert(offsetof(PeerControl, reason) == 192);
+static_assert(sizeof(PeerControl) == 256);
 
 struct alignas(64) SharedBridge {
     alignas(64) std::uint64_t signature = 0;
