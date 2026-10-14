@@ -5,7 +5,7 @@
 | Native bridge core | Linux x86-64, GCC 14.2.0, C++20 | Release and sanitizer tests passed on 2026-10-14 |
 | Native bridge core | Linux x86-64, Clang 17, C++20 | Release tests passed on 2026-10-14 |
 | Native bridge core | Windows x64, MSVC, `windows-2025` runner | Release build and CTest passed on 2026-10-14 in [CI run 3](https://github.com/ranzevor/Blockwater/actions/runs/38587538291) |
-| RDR2 ScriptHook plugin | RDR2 Story Mode | Not implemented or tested in Blockwater |
+| RDR2 ScriptHook plugin | Windows x64/MSVC; RDR2 Story Mode target | Lifecycle implementation and isolated native-loader tests added; real ScriptHook and live-game behavior remain unverified. See [native host](rdr2-host.md) and per-commit CI. |
 | Minecraft client | Java Edition / Fabric | Not implemented or tested in Blockwater |
 | GPU color/depth compositor | DX12 / ReShade | Not implemented or tested in Blockwater |
 

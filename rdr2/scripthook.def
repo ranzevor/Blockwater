@@ -1,0 +1,8 @@
+LIBRARY ScriptHookRDR2
+EXPORTS
+    ?scriptWait@@YAXK@Z
+    ?scriptRegister@@YAXPEAUHINSTANCE__@@P6AXXZ@Z
+    ?scriptUnregister@@YAXPEAUHINSTANCE__@@@Z
+    ?nativeInit@@YAX_K@Z
+    ?nativePush64@@YAX_K@Z
+    ?nativeCall@@YAPEA_KXZ

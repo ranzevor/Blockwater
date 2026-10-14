@@ -32,7 +32,7 @@ The current host contract samples 16 terrain points each tick across a 17 × 17 
 
 `HostAdapter::tick()` publishes a host snapshot and, once the guest is live, drains up to 32 bounded events per frame. A placed block is represented by a host object handle. The adapter refuses placements above 400 tracked objects, mirrors removal to the correct handle and cleans tracked objects on guest restart or adapter destruction. It forwards bounded explosion magnitudes and accepts NPC damage only for entities exposed in the most recently published host snapshot. Block placements and explosions must occur within a 96 m axis-aligned neighbourhood of the player. Rejected actions are retained in a bounded local response queue if the outbound ring is currently full.
 
-Game-specific SDK calls are not yet implemented. A real host must verify each spawned object model, wait for its asynchronous streaming state without blocking the game thread, and ensure that collision is suitable for characters, horses and wagons. Host-proxy limits must be calibrated in the real game.
+The [RDR2 lifecycle component](rdr2-host.md) implements read-only game-context checks and transport ownership without invoking gameplay callbacks or publishing simulated world data. A real gameplay host must verify each spawned object model, wait for its asynchronous streaming state without blocking the game thread, and ensure that collision is suitable for characters, horses and wagons. Host-proxy limits must be calibrated in the real game.
 
 ## Image composition reference
 
