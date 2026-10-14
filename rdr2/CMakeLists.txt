@@ -36,7 +36,7 @@ target_link_libraries(blockwater_rdr2_loader PRIVATE blockwater_core blockwater_
 target_compile_options(blockwater_rdr2_loader PRIVATE /W4 /WX /utf-8)
 set_target_properties(blockwater_rdr2_loader PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${harness_dir}")
 foreach(scenario IN ITEMS story network0 network1 network2 network_with_null paused unavailable dead cutscene
-        null_native disconnect restart reload corrupt duplicate early_unload)
+        null_native disconnect restart host_stall reload corrupt duplicate early_unload)
     add_test(NAME "rdr2_${scenario}" COMMAND blockwater_rdr2_loader
         "$<TARGET_FILE:blockwater_rdr2>" "${scenario}")
     set_tests_properties("rdr2_${scenario}" PROPERTIES TIMEOUT 15

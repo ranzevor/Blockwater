@@ -32,6 +32,7 @@ private:
     const std::thread::id thread_;
     std::uint64_t epoch_;
     std::uint64_t guest_epoch_ = 0;
+    std::uint64_t last_tick_us_ = 0;
     bool started_ = false;
     HostPhase phase_ = HostPhase::Dormant;
     std::optional<Event> pending_;

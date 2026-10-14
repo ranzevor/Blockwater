@@ -188,6 +188,23 @@ void epoch_exhaustion() {
     REQUIRE(f.guest->peer_reason() == RejectReason::Protocol);
 }
 
+void host_stall() {
+    Fixture f;
+    f.connect();
+    f.command(1);
+    f.clock += kHeartbeatTimeoutUs + 1;
+    f.pulse();
+    REQUIRE(f.tick() == HostPhase::Waiting);
+    REQUIRE(f.host->epoch() == 101);
+    f.pulse();
+    REQUIRE(f.tick() == HostPhase::Connected);
+    Event response{};
+    REQUIRE(!f.guest->receive(response));
+    f.command(2);
+    f.tick();
+    REQUIRE(f.guest->receive(response) && response.id == 2);
+}
+
 void concurrent_heartbeats() {
     auto memory = std::make_unique<SharedBridge>();
     initialize(*memory);
@@ -228,8 +245,8 @@ void frame_invalidation() {
 int main() {
     try {
         states(); multiplayer(); rejection(); backpressure(); stale_budget();
-        reconnect(); thread_guard(); epoch_exhaustion(); frame_invalidation(); concurrent_heartbeats();
-        std::cout << "10 host session scenarios passed\n";
+        reconnect(); thread_guard(); epoch_exhaustion(); frame_invalidation(); concurrent_heartbeats(); host_stall();
+        std::cout << "11 host session scenarios passed\n";
         return 0;
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

@@ -132,13 +132,17 @@ void run(const wchar_t* path, const std::wstring& scenario) {
             REQUIRE(guest.peer_epoch() > old_epoch);
             advance(&guest);
             expect_rejection(guest, 2);
-        } else if (scenario == L"disconnect" || scenario == L"restart") {
+        } else if (scenario == L"disconnect" || scenario == L"restart" || scenario == L"host_stall") {
             Event old{}; old.id = 90;
             REQUIRE(guest.send(old));
             if (scenario == L"disconnect") {
                 std::atomic_ref<std::uint64_t>(retained->bridge().guest.heartbeat_us)
                     .store(now_us() - kHeartbeatTimeoutUs - 1000);
-            } else guest.announce(201);
+            } else if (scenario == L"restart") guest.announce(201);
+            else {
+                Sleep(2100);
+                guest.heartbeat();
+            }
             advance();
             REQUIRE(guest.peer_epoch() > old_epoch);
             advance(&guest);

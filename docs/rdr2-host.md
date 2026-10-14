@@ -31,6 +31,7 @@ The staging directory contains only `Blockwater.asi` and two license files. The 
 | Main menu, unavailable player, dead player or missing native result | Keep the bridge closed |
 | Controlled live player outside a network context | Announce a nonzero epoch and heartbeat; wait for an advancing guest heartbeat |
 | Pause or loss of player control | Close the peer record, invalidate world data and discard local pending responses |
+| Host script resumes after a gap longer than the heartbeat timeout | Renew the session even when the guest stayed live; reject commands queued for the previous host epoch |
 | Guest closes, times out or changes epoch | Invalidate the session, advance the host epoch and require a fresh heartbeat handshake |
 | Any positive network-context check | Refuse with `Multiplayer`; refusal remains latched until the plugin is unloaded |
 | Explicit DLL unload | Unregister the script, close its transport and release mapping/host-presence handles; invoke no game natives |
@@ -70,6 +71,6 @@ The six ScriptHook function declarations are adapted from its [published integra
 
 ## Automated evidence and remaining acceptance
 
-`blockwater_host_session` tests the portable lifecycle, stale-event budget, full reverse queue, thread ownership, epoch exhaustion, world-frame invalidation and 100,000 concurrent-heartbeat checks without a false epoch change. On Windows the loader tests load the actual compiled `.asi` against an isolated test runtime. Its native allowlist checks call signatures and script-fiber ownership; unknown calls, off-thread calls and nonzero frame waits fail the tests. Scenarios cover independent network flags, partial native failure, pause, unavailable/dead/uncontrolled players, disconnect, guest restart, retained-mapping reload, corrupt mapping, duplicate plugin and unload before first script entry. Separate tests cover a missing runtime DLL and installation contents.
+`blockwater_host_session` tests the portable lifecycle, stale-event budget, full reverse queue, thread ownership, epoch exhaustion, host-script stalls, world-frame invalidation and 100,000 concurrent-heartbeat checks without a false epoch change. On Windows the loader tests load the actual compiled `.asi` against an isolated test runtime. Its native allowlist checks call signatures and script-fiber ownership; unknown calls, off-thread calls and nonzero frame waits fail the tests. Scenarios cover independent network flags, partial native failure, pause, unavailable/dead/uncontrolled players, disconnect, guest restart, retained-mapping reload, corrupt mapping, duplicate plugin and unload before first script entry. Separate tests cover a missing runtime DLL and installation contents.
 
 Per-commit execution evidence is in [CI](https://github.com/ranzevor/Blockwater/actions/workflows/ci.yml). Loading against the genuine ScriptHook runtime, real game-context behavior and reload inside Story Mode still require the exact-version [game acceptance](milestones.md#required-game-validation). B1 also still requires camera/terrain acquisition and real collision creation/removal.

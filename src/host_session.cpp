@@ -62,6 +62,10 @@ HostPhase HostSession::tick_impl(HostContext context, std::optional<std::uint64_
     if (std::this_thread::get_id() != thread_)
         throw std::logic_error("host session requires its script thread");
     if (phase_ == HostPhase::Stopped || phase_ == HostPhase::Refused) return phase_;
+    const auto tick_time = timestamp.value_or(now_us());
+    const bool stalled = last_tick_us_ != 0 &&
+        (tick_time < last_tick_us_ || tick_time - last_tick_us_ > kHeartbeatTimeoutUs);
+    last_tick_us_ = tick_time;
     if (context == HostContext::Multiplayer) {
         invalidate();
         endpoint_.refuse(RejectReason::Multiplayer);
@@ -71,6 +75,8 @@ HostPhase HostSession::tick_impl(HostContext context, std::optional<std::uint64_
         suspend();
         return phase_;
     }
+    // A paused script may resume without ever observing a paused game context.
+    if (stalled && (phase_ == HostPhase::Waiting || phase_ == HostPhase::Connected)) suspend();
     if (phase_ == HostPhase::Dormant || phase_ == HostPhase::Suspended) {
         if (!start_generation()) return phase_;
     }
@@ -85,7 +91,7 @@ HostPhase HostSession::tick_impl(HostContext context, std::optional<std::uint64_
     if (!alive) return phase_;
     guest_epoch_ = remote_epoch;
     phase_ = HostPhase::Connected;
-    reject_commands(timestamp.value_or(now_us()));
+    reject_commands(tick_time);
     return phase_;
 }
 
