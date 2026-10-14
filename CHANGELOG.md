@@ -9,5 +9,7 @@ Changes are recorded against released source tags. Protocol compatibility is tra
 - CPU color/depth/HUD compositor reference and integration smoke test.
 - English and Simplified Chinese startup-loaded language catalogs, with matching-key checks.
 - Public contribution, security, localization and compatibility documentation; Linux/Windows pull-request CI.
+- Complete English and Simplified Chinese README with build/run examples, expected output, troubleshooting and contributor entry points.
+- Windows build fixes for explicit ABI-preserving cache-line padding and the test assertion header's direct `<string>` dependency; Linux and Windows CI passed.
 
 A playable RDR2 build and Minecraft Fabric mod have not been released.
