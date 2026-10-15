@@ -49,7 +49,11 @@ void expect_rejection(Endpoint& guest, std::uint64_t id) {
     REQUIRE(response.id == id && response.kind == EventKind::Rejected);
     REQUIRE(response.payload == static_cast<std::uint32_t>(EventKind::Explosion));
     HostFrame frame{};
-    REQUIRE(!guest.read(frame));
+    REQUIRE(guest.read(frame));
+    REQUIRE(frame.camera.position.x == 100 && frame.camera.position.z == 12);
+    REQUIRE(frame.camera.yaw == 25 && frame.camera.pitch == -5 && frame.camera.roll == 2);
+    REQUIRE(frame.camera.fov == 60 && frame.player_feet.z == 10);
+    REQUIRE(frame.anchor != 0 && frame.timestamp_us != 0 && frame.entity_count == 0);
 }
 void expect_lease_released() {
     const auto lease = OpenMutexW(SYNCHRONIZE, FALSE, L"Local\\Blockwater_rdr2_host");
@@ -61,6 +65,54 @@ void expect_no_mapping() {
     try { Mapping unexpected("rdr2", Mapping::Mode::Open); }
     catch (const std::runtime_error&) { absent = true; }
     REQUIRE(absent);
+}
+void world_scenario(Endpoint& guest, const std::wstring& scenario) {
+    HostFrame before{};
+    REQUIRE(guest.read(before));
+    unsigned flags = Story;
+    if (scenario == L"world_invalid") flags = BadCamera;
+    if (scenario == L"world_bounds") flags = BadBounds;
+    if (scenario == L"world_null_camera") flags = NullCamera;
+    if (flags != Story) {
+        BWTestContext(flags);
+        advance(&guest);
+        HostFrame frame{};
+        REQUIRE(!guest.read(frame));
+        BWTestContext(Story);
+        advance(&guest);
+        REQUIRE(guest.read(frame) && frame.anchor > before.anchor && frame.terrain_count == 0);
+        return;
+    }
+    if (scenario == L"world_teleport") {
+        BWTestContext(Teleport);
+        advance(&guest);
+        HostFrame frame{};
+        REQUIRE(guest.read(frame) && frame.anchor > before.anchor);
+        REQUIRE(frame.host_origin.x == 200 && frame.terrain_count == 0);
+        for (int i = 0; i < 20; ++i) advance(&guest);
+        REQUIRE(guest.read(frame) && frame.terrain_count > 0);
+        for (std::uint32_t i = 0; i < frame.terrain_count; ++i) REQUIRE(frame.terrain[i].point.x >= 192);
+        BWTestContext(Story);
+        return;
+    }
+    BWTestContext(Paused);
+    advance();
+    HostFrame frame{};
+    REQUIRE(!guest.read(frame));
+    const auto calls = BWTestCounts().world_calls;
+    advance();
+    REQUIRE(BWTestCounts().world_calls == calls);
+    if (scenario == L"world_pending") flags = PendingGround;
+    if (scenario == L"world_miss") flags = NoGround;
+    if (scenario == L"world_bad_ground") flags = BadGround;
+    BWTestContext(flags);
+    advance(&guest); advance(&guest);
+    for (int i = 0; i < 30; ++i) advance(&guest);
+    REQUIRE(guest.read(frame) && frame.anchor > before.anchor);
+    REQUIRE(BWTestCounts().ground_peak <= 8);
+    if (flags != Story) REQUIRE(frame.terrain_count == 0);
+    else REQUIRE(frame.terrain_count > 0);
+    BWTestContext(Story);
 }
 
 void run(const wchar_t* path, const std::wstring& scenario) {
@@ -121,7 +173,9 @@ void run(const wchar_t* path, const std::wstring& scenario) {
         attach(guest);
         expect_rejection(guest, 1);
         const auto old_epoch = guest.peer_epoch();
-        if (scenario == L"paused") {
+        if (scenario.rfind(L"world_", 0) == 0) {
+            world_scenario(guest, scenario);
+        } else if (scenario == L"paused") {
             BWTestContext(Paused);
             advance();
             REQUIRE(guest.peer_state() == PeerState::Closed);

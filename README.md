@@ -8,7 +8,7 @@ Blockwater is an open-source passthrough project that aims to bring Minecraft's 
 
 The intended experience is to build a wall that stops an RDR2 character or wagon, set off TNT that affects the surrounding world, and let Minecraft creatures interact with RDR2 NPCs.
 
-**Current stage: RDR2 adapter development.** The bridge core and the first ScriptHookRDR2 lifecycle component are implemented. Windows x64/MSVC builds `Blockwater.asi` with context checks and session handling. Real camera/terrain acquisition, gameplay effects, the Fabric client and GPU compositor remain; there is no playable game release yet.
+**Current stage: RDR2 adapter development.** The bridge core, ScriptHookRDR2 lifecycle and read-only camera/player/terrain acquisition are implemented. Windows x64/MSVC builds `Blockwater.asi`, verified with isolated loader tests. Real-game calibration and acceptance, collision objects, gameplay effects, the Fabric client and GPU compositor remain; there is no playable game release yet.
 
 [Current capabilities](#current-capabilities) · [How it works](#how-it-works) · [Build and run](#build-and-run) · [Compatibility](#compatibility) · [Roadmap](#roadmap) · [Contribute](#contribute)
 
@@ -18,12 +18,13 @@ The intended experience is to build a wall that stops an RDR2 character or wagon
 | --- | --- |
 | Local bridge | Windows named mappings and POSIX shared memory, version/size checks, atomic frame snapshots and bounded event queues in both directions |
 | Peer lifecycle | Heartbeats, session epochs, stale-event rejection, duplicate suppression and multiplayer-context refusal in the host contract |
-| World mapping | Position and scale conversion between RDR2's metre/Z-up coordinates and Minecraft's block/Y-up coordinates; incremental terrain samples and nearby-entity snapshots |
+| World mapping | Position and scale conversion between RDR2's metre/Z-up coordinates and Minecraft's block/Y-up coordinates; core contracts for terrain and nearby-entity snapshots |
 | Host adapter | Simulated block-proxy creation/removal, explosion and entity-damage callbacks, input bounds and owned-object cleanup on guest restart |
 | RDR2 native lifecycle | ScriptHook registration, read-only game-context checks, pause/disconnect/reload handling and explicit rejection of unimplemented gameplay requests; [native-host guide](docs/rdr2-host.md) |
+| RDR2 world acquisition | Final-render camera, model-bounds player feet and bounded asynchronous terrain; invalidation and reanchoring across pause, reconnect and teleport. Native entity publication remains unimplemented; [acquisition contract and game acceptance](docs/rdr2-world.md) |
 | Image composition | A CPU reference implementation for depth-tested world layers and HUD blending; it accepts prepared images and depths, not live game frames |
 | Localization | Startup-loaded English and Simplified Chinese catalogs with English fallback for missing translated keys |
-| Developer tests | Protocol, child-process IPC, host simulation, CPU compositing and localization suites, plus the standalone fake-pair example |
+| Developer tests | Protocol, child-process IPC, host simulation, lifecycle, world acquisition, native-value encoding, ASI loading, CPU compositing and localization suites, plus the standalone fake-pair example |
 
 The [architecture](docs/architecture.md) specifies the protocol and current resource limits. The [verification record](docs/verification-2026-10-14.md) describes the Linux baseline; [CI runs](https://github.com/ranzevor/Blockwater/actions/workflows/ci.yml) show subsequent automated results for their tested commits.
 
@@ -99,11 +100,11 @@ Host block proxies=1
 
 The example exits with code `0` on success. Its output comes from simulated callbacks; it does not open a game window or modify RDR2. A separate child-process shared-memory scenario is exercised by [`tests/test_ipc.cpp`](tests/test_ipc.cpp).
 
-The portable build produces `blockwater_core` (a static library), `blockwater_tests`, `blockwater_session_tests` and `blockwater_fakes`. Windows x64/MSVC also builds `build/rdr2/plugin/Release/Blockwater.asi` by default. Set `-DBLOCKWATER_BUILD_RDR2=OFF` for core-only development. The [native-host guide](docs/rdr2-host.md) covers loader tests and isolated staging; no Fabric `.jar` or playable installer is produced.
+The portable build produces `blockwater_core` (a static library), `blockwater_tests`, `blockwater_session_tests`, `blockwater_world_tests` and `blockwater_fakes`. Windows x64/MSVC also builds `build/rdr2/plugin/Release/Blockwater.asi` by default. Set `-DBLOCKWATER_BUILD_RDR2=OFF` for core-only development. The [native-host guide](docs/rdr2-host.md) covers loader tests and isolated staging; no Fabric `.jar` or playable installer is produced.
 
 ### Tests and troubleshooting
 
-CTest registers `blockwater_tests`, `blockwater_fake_pair` and `blockwater_host_session`; Windows native builds additionally register the `rdr2_` loader and staging tests. The first covers frame consistency, invalid payloads, queue saturation, peer restarts, duplicate events, multiplayer refusal, coordinate transforms, host callbacks, depth occlusion and locale lookup. The Python validator checks UTF-8 catalogs, message-key/placeholder parity and local Markdown file links.
+CTest registers `blockwater_tests`, `blockwater_fake_pair`, `blockwater_host_session` and `blockwater_world_stream`; Windows native builds additionally register the `rdr2_` loader and staging tests. The first covers frame consistency, invalid payloads, queue saturation, peer restarts, duplicate events, multiplayer refusal, coordinate transforms, host callbacks, depth occlusion and locale lookup. The world suite covers query budgets, stale results, invalid observations, anchor recovery and native-value ABI. The Python validator checks UTF-8 catalogs, message-key/placeholder parity and local Markdown file links.
 
 | Symptom | Action |
 | --- | --- |
@@ -140,7 +141,7 @@ Acceptance conditions and dependencies live in [integration milestones](docs/mil
 | Path | Purpose |
 | --- | --- |
 | [`include/blockwater/`](include/blockwater/) | Public core headers; `wire.hpp` defines the shared-memory ABI, `link.hpp` peer lifecycle and `coordinates.hpp` world transforms |
-| [`src/`](src/) | Mapping implementation, host adapter, CPU compositor and localization catalog |
+| [`src/`](src/) | Mapping implementation, host adapter, world acquisition, CPU compositor and localization catalog |
 | [`rdr2/`](rdr2/) | Windows native plugin, ScriptHook import contract and isolated loader tests |
 | [`examples/`](examples/) | Runnable fake host–guest integration |
 | [`tests/`](tests/) | Native regression suites, including child-process IPC |
@@ -160,6 +161,7 @@ The README is available in English and Simplified Chinese. Runtime messages are 
 | Task | Read |
 | --- | --- |
 | Build or test the native plugin | [RDR2 native host](docs/rdr2-host.md) |
+| Inspect native camera/player/terrain acquisition | [World acquisition](docs/rdr2-world.md) |
 | Understand the protocol and rendering design | [Architecture](docs/architecture.md) |
 | Check platform evidence or integration progress | [Compatibility](docs/compatibility.md), [milestones](docs/milestones.md), [baseline verification](docs/verification-2026-10-14.md) |
 | Submit code or translations | [Contributing](CONTRIBUTING.md), [localization](docs/localization.md) |

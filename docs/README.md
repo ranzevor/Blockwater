@@ -17,3 +17,5 @@ The documentation distinguishes bridge-core tests from game-integrated behavior.
 
 - [RDR2 native host: build, lifecycle, native register and tests](rdr2-host.md)
 - [RDR2 原生宿主：构建、生命周期与测试](zh-CN/rdr2-host.md)
+- [RDR2 world acquisition: camera, player and asynchronous terrain](rdr2-world.md)
+- [RDR2 世界数据采集：相机、玩家与异步地形](zh-CN/rdr2-world.md)

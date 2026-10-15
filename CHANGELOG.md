@@ -16,5 +16,8 @@ Changes are recorded against released source tags. Protocol compatibility is tra
 - Windows x64 ScriptHookRDR2 lifecycle plugin with read-only context checks, latched multiplayer refusal and script-thread session handling.
 - Epoch renewal and invalidation across pause, script stalls, disconnect and reload; bounded rejection of unimplemented gameplay requests without changing ABI v1.
 - Portable session regression tests, isolated Windows ASI loader scenarios and installation-manifest checks; bilingual native-host documentation.
+- Read-only final-render camera, model-bounds player feet and asynchronous terrain publication in the native plugin, preserving ABI v1.
+- Bounded query ownership, finite-value checks, expiring terrain and reanchoring across session, position and clock discontinuities.
+- Nine portable acquisition/value cases and eight additional ASI loader scenarios; bilingual acquisition contract and exact remaining game acceptance.
 
 A playable RDR2 build and Minecraft Fabric mod have not been released.

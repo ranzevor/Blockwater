@@ -4,7 +4,7 @@
 
 ## Implemented scope
 
-`Blockwater.asi` is the B1 lifecycle component for Windows x64/MSVC. It registers with ScriptHookRDR2, checks the game context on the script thread and connects to the existing ABI v1 bridge. Camera/terrain publication, collision objects and gameplay effects are subsequent B1 work. The lifecycle component publishes no valid world frame and rejects current-session gameplay requests rather than simulating success.
+`Blockwater.asi` is the B1 Windows x64/MSVC native component. It registers with ScriptHookRDR2, checks the game context on the script thread and connects to the existing ABI v1 bridge. The connected plugin now publishes read-only final-camera, model-bounds player-feet and asynchronous terrain observations through [world acquisition](rdr2-world.md). Missing or invalid acquisition data invalidates the world frame. Collision objects and gameplay effects remain unimplemented; current-session gameplay requests are rejected rather than simulated as successful.
 
 ## Build and test
 
@@ -28,8 +28,10 @@ The staging directory contains only `Blockwater.asi` and two license files. The 
 | --- | --- |
 | DLL attach | Register the script entry only; no game-native calls or shared-memory construction |
 | First script entry | Acquire a non-waiting, exclusive host-presence handle; open a valid retained mapping or create a new one; invalidate retained host frames |
-| Main menu, unavailable player, dead player or missing native result | Keep the bridge closed |
+| Main menu, unavailable player, dead player or missing context-native result | Keep the bridge closed |
 | Controlled live player outside a network context | Announce a nonzero epoch and heartbeat; wait for an advancing guest heartbeat |
+| Connected session with valid observations | Publish camera/player/terrain through the existing atomic snapshot |
+| Invalid world observation | Publish an invalid snapshot and discard cached terrain; keep transport state separate |
 | Pause or loss of player control | Close the peer record, invalidate world data and discard local pending responses |
 | Host script resumes after a gap longer than the heartbeat timeout | Renew the session even when the guest stayed live; reject commands queued for the previous host epoch |
 | Guest closes, times out or changes epoch | Invalidate the session, advance the host epoch and require a fresh heartbeat handshake |
@@ -39,11 +41,11 @@ The staging directory contains only `Blockwater.asi` and two license files. The 
 
 The mapping is `Local\Blockwater_rdr2`; the separate presence handle is `Local\Blockwater_rdr2_host`. A second plugin instance fails closed without replacing the first. The presence handle is created and retained, not waited on. Reload can reopen a mapping still held by the guest, but never reinitializes an incompatible existing region. The new epoch is greater than the retained host epoch; exhaustion refuses startup rather than wrapping to an old generation.
 
-`scriptWait(0)` yields the ScriptHook fiber to the next frame. There are no IPC waits, worker threads, disk operations or resource creation inside the frame loop. Shared-memory cleanup calls no game functions. No camera, player-visibility state or game object is owned by this first component; later gameplay adapters must release their game resources on the script thread before unload.
+`scriptWait(0)` yields the ScriptHook fiber to the next frame. There are no IPC waits, worker threads, disk operations or heap allocations inside the frame loop. The acquisition component owns at most eight asynchronous query handles; completion, timeout and invalidation are detailed in [world acquisition](rdr2-world.md#asynchronous-terrain). Shared-memory cleanup calls no game functions. The plugin does not change the game camera, player visibility or game objects. Genuine engine query cleanup during unload/reload remains a live acceptance item; no native cleanup is performed under the loader lock.
 
 ## Session protocol
 
-Transport readiness is not gameplay readiness. The guest must also require a valid, current `HostFrame` before treating a host as a gameplay provider. `HostSession` deliberately retains a zero-flag invalid frame until real world acquisition is implemented.
+Transport readiness is not gameplay readiness. The guest must also require a valid, current `HostFrame` before treating a host as a gameplay provider. `HostSession` invalidates retained data during lifecycle transitions. The connected runtime publishes only acquired observations and clears the snapshot on acquisition failure; gameplay requests remain unsupported.
 
 A session drains at most 32 raw incoming entries per tick, including stale entries. It discards invalid packets, mismatched sender/recipient epochs and response-only event kinds. Current-epoch placement, removal, explosion and damage requests receive `Rejected`, preserving request ID, kind and block coordinates. Duplicate unsupported requests remain harmless and may receive the same rejection again.
 
@@ -51,7 +53,7 @@ If the outgoing queue is full, one pending rejection is retained and further inc
 
 ## Native interface register
 
-The context reader uses only these read-only calls. Names, hashes and signatures were cross-checked against the pinned [Garry's Redemption native register](https://github.com/codeByAlexff/garrys-redemption/blob/4ada8a12a85d6f30e2c6485970792cc1b837c6ac/docs/NATIVES.md), whose source is the [RDR3 Native DB](https://alloc8or.re/rdr3/nativedb/). This is source-level evidence, not a Blockwater game run.
+The context reader uses only these read-only calls. Names, hashes and signatures were cross-checked against the pinned [Garry's Redemption native register](https://github.com/codeByAlexff/garrys-redemption/blob/4ada8a12a85d6f30e2c6485970792cc1b837c6ac/docs/NATIVES.md), whose source is the [RDR3 Native DB](https://alloc8or.re/rdr3/nativedb/). This is source-level evidence, not a Blockwater game run. Additional observation calls are recorded in the [world-acquisition native contract](rdr2-world.md#native-contract).
 
 | Native | Hash | Signature |
 | --- | --- | --- |
@@ -71,6 +73,6 @@ The six ScriptHook function declarations are adapted from its [published integra
 
 ## Automated evidence and remaining acceptance
 
-`blockwater_host_session` tests the portable lifecycle, stale-event budget, full reverse queue, thread ownership, epoch exhaustion, host-script stalls, world-frame invalidation and 100,000 concurrent-heartbeat checks without a false epoch change. On Windows the loader tests load the actual compiled `.asi` against an isolated test runtime. Its native allowlist checks call signatures and script-fiber ownership; unknown calls, off-thread calls and nonzero frame waits fail the tests. Scenarios cover independent network flags, partial native failure, pause, unavailable/dead/uncontrolled players, disconnect, guest restart, retained-mapping reload, corrupt mapping, duplicate plugin and unload before first script entry. Separate tests cover a missing runtime DLL and installation contents.
+`blockwater_host_session` tests the portable lifecycle, stale-event budget, full reverse queue, thread ownership, epoch exhaustion, host-script stalls, world-frame invalidation and 100,000 concurrent-heartbeat checks without a false epoch change. On Windows the loader tests load the actual compiled `.asi` against an isolated test runtime. Its native allowlist checks call signatures and script-fiber ownership; unknown calls, off-thread calls and nonzero frame waits fail the tests. Scenarios cover independent network flags, partial native failure, pause, unavailable/dead/uncontrolled players, disconnect, guest restart, retained-mapping reload, corrupt mapping, duplicate plugin and unload before first script entry. Separate tests cover a missing runtime DLL and installation contents. Eight additional scenarios exercise the [world-acquisition failure and recovery paths](rdr2-world.md#tests-and-acceptance).
 
-Per-commit execution evidence is in [CI](https://github.com/ranzevor/Blockwater/actions/workflows/ci.yml). Loading against the genuine ScriptHook runtime, real game-context behavior and reload inside Story Mode still require the exact-version [game acceptance](milestones.md#required-game-validation). B1 also still requires camera/terrain acquisition and real collision creation/removal.
+Per-commit execution evidence is in [CI](https://github.com/ranzevor/Blockwater/actions/workflows/ci.yml). Loading against the genuine ScriptHook runtime, real game-context behavior, camera/feet calibration, terrain costs and engine query cleanup still require exact-version [game acceptance](milestones.md#required-game-validation). B1 also requires real collision creation/removal.
