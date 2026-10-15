@@ -7,6 +7,7 @@ on:
     paths:
       - tools/audit_redcraft_release.py
       - tools/audit_redcraft_structure.py
+      - tools/audit_redcraft_physics.py
       - .github/workflows/redcraft-audit.yml
 
 permissions:
@@ -25,5 +26,5 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Verify digest and inspect licensing and call structure
-        run: python3 tools/audit_redcraft_structure.py
+      - name: Verify collision consumers and native bindings
+        run: python3 tools/audit_redcraft_physics.py
