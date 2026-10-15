@@ -8,7 +8,7 @@ Blockwater 是一个开源的双运行时桥接项目，目标是在**《荒野�
 
 目标玩法包括：搭建能挡住 RDR2 角色或马车的方块墙，让 TNT 爆炸影响周围世界，以及让 Minecraft 生物与 RDR2 NPC 互动。
 
-**当前阶段：RDR2 适配器开发。** 桥接核心和首批 ScriptHookRDR2 生命周期组件已实现。Windows x64/MSVC 可构建带有游戏状态检查及会话处理的 `Blockwater.asi`。真实相机/地形采集、玩法效果、Fabric 客户端和 GPU 合成器仍需接入，目前没有可游玩的游戏发行版。
+**当前阶段：RDR2 适配器开发。** 桥接核心、ScriptHookRDR2 生命周期和只读相机/玩家/地形采集已实现。Windows x64/MSVC 可构建 `Blockwater.asi`，并通过隔离加载测试。真实游戏校准与验收、碰撞对象、玩法效果、Fabric 客户端和 GPU 合成器仍待完成，目前没有可游玩的游戏发行版。
 
 [当前能力](#当前能力) · [工作原理](#工作原理) · [构建与运行](#构建与运行) · [兼容性](#兼容性) · [路线图](#路线图) · [参与贡献](#参与贡献)
 
@@ -18,12 +18,13 @@ Blockwater 是一个开源的双运行时桥接项目，目标是在**《荒野�
 | --- | --- |
 | 本地桥接 | Windows 命名映射与 POSIX 共享内存、版本和大小校验、原子帧快照，以及双向有界事件队列 |
 | 连接生命周期 | 心跳、会话代次、旧事件拒绝、重复抑制，以及宿主契约中的多人模式拒绝逻辑 |
-| 世界映射 | RDR2 米制/Z 轴向上与 Minecraft 方块/Y 轴向上之间的位置、比例转换；增量地形采样与附近实体快照 |
+| 世界映射 | RDR2 米制/Z 轴向上与 Minecraft 方块/Y 轴向上之间的位置、比例转换；地形与附近实体快照的核心契约 |
 | 宿主适配器 | 模拟方块碰撞代理的创建与移除、爆炸和实体伤害回调、输入边界，以及客体重启时的所属对象清理 |
 | RDR2 原生生命周期 | ScriptHook 注册、只读游戏状态检查、暂停/断连/重载处理，以及未接入玩法请求的明确拒绝；详见[原生宿主指南](docs/zh-CN/rdr2-host.md) |
+| RDR2 世界采集 | 最终渲染相机、模型包围盒脚底参考点与有界异步地形；暂停、重连和传送时使数据失效并重新锚定。原生实体发布尚未实现；详见[采集契约与游戏验收](docs/zh-CN/rdr2-world.md) |
 | 图像合成 | 世界图层深度测试与 HUD 混合的 CPU 参考实现；输入是准备好的图像和深度，不是实时游戏画面 |
 | 国际化 | 启动时加载英文与简体中文消息资源，缺失译文键时回退英文 |
-| 开发测试 | 协议、子进程 IPC、宿主模拟、CPU 合成和国际化测试套件，以及独立运行的模拟双端示例 |
+| 开发测试 | 协议、子进程 IPC、宿主模拟、生命周期、世界采集、Native 参数编码、ASI 加载、CPU 合成和国际化测试，以及独立运行的模拟双端示例 |
 
 [技术架构](docs/architecture.md)定义协议和当前资源限制；[验证记录](docs/verification-2026-10-14.md)记录 Linux 基线，[CI 运行记录](https://github.com/ranzevor/Blockwater/actions/workflows/ci.yml)提供后续各被测提交的自动检查结果。
 
@@ -99,11 +100,11 @@ Host block proxies=1
 
 成功时程序退出码为 `0`。输出来自模拟回调，不会打开游戏窗口或修改 RDR2。独立的子进程共享内存场景由 [`tests/test_ipc.cpp`](tests/test_ipc.cpp) 验证。
 
-可移植构建产物为静态库 `blockwater_core`、测试程序 `blockwater_tests` 和 `blockwater_session_tests`，以及示例 `blockwater_fakes`。Windows x64/MSVC 默认额外构建 `build/rdr2/plugin/Release/Blockwater.asi`；使用 `-DBLOCKWATER_BUILD_RDR2=OFF` 仅开发核心。[原生宿主指南](docs/zh-CN/rdr2-host.md)说明加载测试与隔离暂存方式；当前不生成 Fabric `.jar` 或可玩安装器。
+可移植构建产物为静态库 `blockwater_core`、测试程序 `blockwater_tests`、`blockwater_session_tests` 和 `blockwater_world_tests`，以及示例 `blockwater_fakes`。Windows x64/MSVC 默认额外构建 `build/rdr2/plugin/Release/Blockwater.asi`；使用 `-DBLOCKWATER_BUILD_RDR2=OFF` 仅开发核心。[原生宿主指南](docs/zh-CN/rdr2-host.md)说明加载测试与隔离暂存方式；当前不生成 Fabric `.jar` 或可玩安装器。
 
 ### 测试与常见问题
 
-CTest 注册了 `blockwater_tests`、`blockwater_fake_pair` 和 `blockwater_host_session`，Windows 原生构建还注册 `rdr2_` 加载与暂存测试。前者覆盖帧一致性、非法输入、队列满载、对端重启、重复事件、多人模式拒绝、坐标转换、宿主回调、深度遮挡与语言查询。Python 校验器检查 UTF-8 消息资源、消息键和占位符的一致性，以及 Markdown 本地文件链接。
+CTest 注册了 `blockwater_tests`、`blockwater_fake_pair`、`blockwater_host_session` 和 `blockwater_world_stream`，Windows 原生构建还注册 `rdr2_` 加载与暂存测试。前者覆盖帧一致性、非法输入、队列满载、对端重启、重复事件、多人模式拒绝、坐标转换、宿主回调、深度遮挡与语言查询。世界采集套件覆盖查询预算、旧结果、非法观测、锚点恢复和 Native 参数 ABI。Python 校验器检查 UTF-8 消息资源、消息键和占位符的一致性，以及 Markdown 本地文件链接。
 
 | 问题 | 处理方式 |
 | --- | --- |
@@ -140,7 +141,7 @@ Minecraft 客体以 **Java Edition / Fabric** 为目标。Minecraft/Fabric、RDR
 | 路径 | 用途 |
 | --- | --- |
 | [`include/blockwater/`](include/blockwater/) | 核心公开头文件；`wire.hpp` 定义共享内存 ABI，`link.hpp` 定义对端生命周期，`coordinates.hpp` 定义世界坐标转换 |
-| [`src/`](src/) | 共享内存映射、宿主适配器、CPU 合成器与语言资源加载 |
+| [`src/`](src/) | 共享内存映射、宿主适配器、世界采集、CPU 合成器与语言资源加载 |
 | [`rdr2/`](rdr2/) | Windows 原生插件、ScriptHook 导入契约与隔离加载测试 |
 | [`examples/`](examples/) | 可运行的模拟宿主与客体示例 |
 | [`tests/`](tests/) | 原生回归测试，包括子进程 IPC |
@@ -160,6 +161,7 @@ README 提供英文和简体中文版本。运行时消息与通信协议分离�
 | 任务 | 阅读入口 |
 | --- | --- |
 | 构建或测试原生插件 | [RDR2 原生宿主](docs/zh-CN/rdr2-host.md) |
+| 了解原生相机/玩家/地形采集 | [世界数据采集](docs/zh-CN/rdr2-world.md) |
 | 理解协议与渲染设计 | [技术架构](docs/architecture.md) |
 | 核对平台证据或接入进度 | [兼容性](docs/compatibility.md)、[里程碑](docs/milestones.md)、[基线验证](docs/verification-2026-10-14.md) |
 | 提交代码或翻译 | [贡献指南](docs/zh-CN/contributing.md)、[国际化](docs/zh-CN/localization.md) |
